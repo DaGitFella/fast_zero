@@ -27,6 +27,38 @@ def test_create_user(client):
     }
 
 
+def test_create_user_with_same_username_must_return_confliction(client, user):
+    response = client.post(
+        '/users',
+        json={
+            'username': 'test',
+            'email': 'luiz@gmail.com',
+            'password': 'lhetoroelhefuro',
+        },
+    )
+
+    assert response.status_code == HTTPStatus.CONFLICT
+    assert response.json() == {
+        'detail': 'Username already exists',
+    }
+
+
+def test_create_user_with_same_email_must_return_confliction(client, user):
+    response = client.post(
+        '/users',
+        json={
+            'username': 'test65',
+            'email': 'test@test.com',
+            'password': 'lhetoroelhefuro',
+        },
+    )
+
+    assert response.status_code == HTTPStatus.CONFLICT
+    assert response.json() == {
+        'detail': 'Email already exists',
+    }
+
+
 def test_read_users(client):
     response = client.get('/users')
     assert response.status_code == HTTPStatus.OK
@@ -39,6 +71,37 @@ def test_read_users_with_users(client, user):
     assert response.json() == {'users': [user_schema]}
 
 
+def test_update_user(client, user):
+    response = client.put(
+        '/users/1',
+        json={
+            'username': 'ruan carlos',
+            'email': 'andrezitos@youtube.com',
+            'password': 'passaro',
+        },
+    )
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {
+        'username': 'ruan carlos',
+        'id': 1,
+        'email': 'andrezitos@youtube.com',
+    }
+
+
+def test_update_user_must_return_404(client, user):
+    response = client.put(
+        '/users/2',
+        json={
+            'username': 'baesse',
+            'email': 'baesse@gmail.com',
+            'password': '<PASSWORD>',
+        },
+    )
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.json() == {'detail': 'User not found'}
+
+
 def test_update_integrity_error(client, user):
     client.post(
         '/users',
@@ -49,11 +112,28 @@ def test_update_integrity_error(client, user):
         },
     )
 
-    client.put(
+    response_update = client.put(
         f'/users/{user.id}',
         json={
             'username': 'alice',
-            'password': 'alicia@gmail.com',
-            'password2': '<PASSWORD>',
+            'email': 'alice@alice.com',
+            'password': 'secret',
         },
     )
+
+    assert response_update.status_code == HTTPStatus.CONFLICT
+    assert response_update.json() == {
+        'detail': 'Username or Email already exists'
+    }
+
+
+def test_delete_user(client, user):
+    response = client.delete(f'/users/{user.id}')
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {'message': 'User deleted'}
+
+
+def test_delete_user_must_return_404(client, user):
+    response = client.delete('/users/2')
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.json() == {'detail': 'User not found'}
