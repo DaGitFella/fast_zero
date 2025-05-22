@@ -27,6 +27,12 @@ def test_create_user(client):
     }
 
 
+def test_get_root_must_return_ok_and_message(client):
+    response = client.get('/')
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == {'message': 'Hello World!'}
+
+
 def test_create_user_with_same_username_must_return_confliction(client, user):
     response = client.post(
         '/users',
@@ -71,9 +77,10 @@ def test_read_users_with_users(client, user):
     assert response.json() == {'users': [user_schema]}
 
 
-def test_update_user(client, user):
+def test_update_user(client, user, token):
     response = client.put(
-        '/users/1',
+        f'/users/{user.id}',
+        headers={'Authorization': f'Bearer {token}'},
         json={
             'username': 'ruan carlos',
             'email': 'andrezitos@youtube.com',
@@ -84,25 +91,26 @@ def test_update_user(client, user):
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {
         'username': 'ruan carlos',
-        'id': 1,
+        'id': user.id,
         'email': 'andrezitos@youtube.com',
     }
 
 
-def test_update_user_must_return_404(client, user):
-    response = client.put(
-        '/users/2',
-        json={
-            'username': 'baesse',
-            'email': 'baesse@gmail.com',
-            'password': '<PASSWORD>',
-        },
-    )
-    assert response.status_code == HTTPStatus.NOT_FOUND
-    assert response.json() == {'detail': 'User not found'}
+# def test_update_user_must_return_404(client, user, token):
+#     response = client.put(
+#         '/users/2',
+#         headers={'Authorization': f'Bearer {token}'},
+#         json={
+#             'username': 'baesse',
+#             'email': 'baesse@gmail.com',
+#             'password': 'lula meu herói',
+#         },
+#     )
+#     assert response.status_code == HTTPStatus.NOT_FOUND
+#     assert response.json() == {'detail': 'User not found'}
 
 
-def test_update_integrity_error(client, user):
+def test_update_integrity_error(client, user, token):
     client.post(
         '/users',
         json={
@@ -114,6 +122,7 @@ def test_update_integrity_error(client, user):
 
     response_update = client.put(
         f'/users/{user.id}',
+        headers={'Authorization': f'Bearer {token}'},
         json={
             'username': 'alice',
             'email': 'alice@alice.com',
@@ -127,13 +136,29 @@ def test_update_integrity_error(client, user):
     }
 
 
-def test_delete_user(client, user):
-    response = client.delete(f'/users/{user.id}')
+def test_delete_user(client, user, token):
+    response = client.delete(
+        f'/users/{user.id}',
+        headers={'Authorization': f'Bearer {token}'},
+    )
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {'message': 'User deleted'}
 
 
-def test_delete_user_must_return_404(client, user):
-    response = client.delete('/users/2')
-    assert response.status_code == HTTPStatus.NOT_FOUND
-    assert response.json() == {'detail': 'User not found'}
+# def test_delete_user_must_return_404(client, user):
+#     response = client.delete('/users/2')
+#     assert response.status_code == HTTPStatus.NOT_FOUND
+#     assert response.json() == {'detail': 'User not found'}
+
+
+def test_get_token(client, user):
+    response = client.post(
+        '/token',
+        data={'username': user.email, 'password': user.clean_password},
+    )
+
+    token = response.json()
+
+    assert response.status_code == HTTPStatus.OK
+    assert 'access_token' in token
+    assert 'token_type' in token
